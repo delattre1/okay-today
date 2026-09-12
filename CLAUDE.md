@@ -8,7 +8,7 @@ image, Plow Chat and the Agent Index client.
 
 The state file is the memory. The morning message is sent by a service, not by a
 model turn, so a conversation never remembers sending it. Every skill reads
-`sinal-shared/scripts/sinal.py status --json` before answering, and changes
+`sinal status --json` before answering, and changes
 state only through that tool.
 
 ## Shape of the thing

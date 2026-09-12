@@ -6,7 +6,7 @@ description: The Sunday line to the owner: how many mornings were answered, how 
 # The week, in two lines
 
 ```
-/var/lib/hermes/skills/sinal-shared/scripts/sinal.py summary --days 7 --json
+sinal summary --days 7 --json
 ```
 
 Write at most two sentences to the owner, in his language. Say the count first,

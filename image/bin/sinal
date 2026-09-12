@@ -1,0 +1,18 @@
+#!/bin/sh
+# `sinal` is the command every skill and the persona call. It exists because a
+# path to a .py file is not a stable thing to hand a model.
+#
+# Two reasons, both learned the hard way. The runtime copies skills into the
+# agent's home with its own idea of file modes, and the executable bit does not
+# survive that copy: a stranger's install then answers "Permission denied" to
+# every documented command while the unattended service keeps ticking and the
+# agent looks perfectly healthy from outside. And the home copy belongs to the
+# agent's uid, so the tool that validates every write to the state would be a
+# file a single injected turn could rewrite.
+#
+# So this runs the image's own copy, root-owned and out of reach of any turn,
+# with the interpreter named explicitly rather than whatever `python3` a login
+# shell happens to resolve.
+set -eu
+exec /opt/hermes/.venv/bin/python3 \
+  /opt/hermes/skills/sinal-shared/scripts/sinal.py "$@"

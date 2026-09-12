@@ -50,7 +50,7 @@ through one validated tool.
 | `sinal-replies/` | every message in the check-in group or an on-call chat |
 | `sinal-weekly/` | the Sunday line to the owner |
 | `sinal-shared/scripts/sinal_state.py` | the state machine, pure and tested |
-| `sinal-shared/scripts/sinal.py` | the only sanctioned way to change the state |
+| `sinal-shared/scripts/sinal.py` | the state tool, reached as the `sinal` command |
 | `image/sinal/watchman.py` | the unattended tick, root-owned in the image |
 
 Install it: [docs/INSTALL.md](docs/INSTALL.md). Tests: `just test`, or

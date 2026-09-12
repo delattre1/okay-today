@@ -330,15 +330,36 @@ def test_a_skipped_day_is_not_counted_as_answered():
     assert data["days"] == 1 and data["answered"] == 1
 
 
-def test_the_tool_every_skill_calls_by_path_is_executable():
-    """Each skill runs `sinal.py ...` as a command, on a path, with no
-    interpreter in front of it. Lose the executable bit and every documented
-    command in the product answers Permission denied on a stranger's install,
-    while the watchman keeps ticking and nothing looks broken from outside."""
-    with open(CLI, encoding="utf-8") as handle:
-        first = handle.readline()
-    assert first.startswith("#!"), "sinal.py is called as a command and needs a shebang"
-    assert os.access(CLI, os.X_OK), (
-        "sinal.py is not executable: setup, replies and the weekly line all "
-        "call it by path and would fail before reading the state"
+def test_the_command_the_skills_call_is_installed_by_the_image():
+    """Skills and persona say `sinal`, and the image has to put that command
+    somewhere the agent can run. The wrapper runs the image's own copy, not the
+    one under the agent's home: the home copy loses its executable bit on the way
+    in, and it belongs to the agent's uid, so it is a file one injected turn
+    could rewrite into anything and have every later turn run it."""
+    wrapper = os.path.join(ROOT, "image", "bin", "sinal")
+    assert os.path.exists(wrapper), "image/bin/sinal is the command every skill calls"
+    with open(wrapper, encoding="utf-8") as handle:
+        body = handle.read()
+    assert body.startswith("#!"), "the wrapper needs a shebang"
+    assert os.access(wrapper, os.X_OK), "the wrapper has to be executable in the repo"
+    assert "/opt/hermes/skills/sinal-shared/scripts/sinal.py" in body, (
+        "the wrapper must run the image's root-owned copy of the tool"
     )
+    dockerfile = open(os.path.join(ROOT, "Dockerfile"), encoding="utf-8").read()
+    assert "/usr/local/bin/sinal" in dockerfile, "the image has to install the command"
+
+
+def test_no_skill_calls_the_tool_by_a_path_under_the_agents_home():
+    """The bit that makes a .py runnable does not survive the copy into the
+    agent's home, and nothing about that failure is visible: the service keeps
+    sending the morning message while every command a person triggers answers
+    Permission denied. A path here is that bug coming back."""
+    home_path = "/var/lib/hermes/skills/sinal-shared/scripts/sinal.py"
+    for relative in ("runtime/persona.md", "sinal-setup/SKILL.md",
+                     "sinal-replies/SKILL.md", "sinal-weekly/SKILL.md",
+                     "sinal-shared/SKILL.md"):
+        text = open(os.path.join(ROOT, relative), encoding="utf-8").read()
+        assert home_path not in text, (
+            f"{relative} calls the tool by its path under the agent's home; "
+            "say `sinal` instead, which the image installs on the PATH"
+        )

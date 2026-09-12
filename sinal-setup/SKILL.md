@@ -9,9 +9,8 @@ Runs **only in the owner's own one-to-one chat**. In a group, say that setup is
 something the owner starts privately, and stop there: this run records phone
 numbers and starts threads with other people.
 
-The tool for every write is
-`/var/lib/hermes/skills/sinal-shared/scripts/sinal.py`. Never edit the state
-file by hand.
+Every read and every write goes through the `sinal` command, installed on this
+agent's PATH. Never edit the state file by hand.
 
 ## 1. The opener, and the one question
 
@@ -45,7 +44,7 @@ Wait for the owner to say they told her. Then:
 
 ```
 printenv PLOW_HOME_CHANNEL                      # this chat's cht_ id
-/var/lib/hermes/skills/sinal-shared/scripts/sinal.py setup-family \
+sinal setup-family \
   --name "Celia" --handle "+15551234567" \
   --owner-name "Junior" --owner-chat "cht_..." \
   --timezone "America/New_York" --morning-at "08:30" --language en
@@ -57,7 +56,7 @@ using: `--language pt` if they wrote to you in Portuguese, `--language en` if
 they wrote in English. The morning message goes out in that language every day,
 so getting it wrong means the watched person reads a greeting in a language they
 may not speak. If the owner later asks for the other language, the shared tool
-has `sinal.py language --value pt` and it takes effect the next morning.
+has `sinal language --value pt` and it takes effect the next morning.
 
 ## 3. Start the group
 
@@ -79,7 +78,7 @@ Read the result. Record the chat id, and tell the owner plainly if `adoption` is
 anything other than `adopted`, because then her replies will not reach you:
 
 ```
-sinal.py link-chat --watch-chat "cht_..."
+sinal link-chat --watch-chat "cht_..."
 ```
 
 ## 4. The on-call person
@@ -91,13 +90,13 @@ Start a separate one-to-one thread with them, same rules, and record it:
 > from me if that happens. Okay with you? Just reply YES.
 
 ```
-sinal.py oncall-add --name "Ana" --handle "+1555..." --chat-uid "cht_..."
+sinal oncall-add --name "Ana" --handle "+1555..." --chat-uid "cht_..."
 ```
 
 ## 5. Solo shape
 
 ```
-sinal.py setup-solo --name "Marcos" --chat "$PLOW_HOME_CHANNEL" \
+sinal setup-solo --name "Marcos" --chat "$PLOW_HOME_CHANNEL" \
   --timezone "America/Chicago" --morning-at "09:00" --language en
 ```
 
@@ -117,5 +116,5 @@ chat. One cron, never more.
 Tell the owner three things, in two sentences: nothing goes out until she says
 yes, you will be silent on the days she answers, and he can change the hour or
 pause any time by telling you. Then run
-`sinal.py status` and read back the hour and the timezone so a wrong city gets
+`sinal status` and read back the hour and the timezone so a wrong city gets
 caught now rather than at 5 in the morning.

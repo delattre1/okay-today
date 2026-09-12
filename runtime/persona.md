@@ -72,7 +72,7 @@ The morning message is sent by a service, not by a turn of yours, so this
 conversation has no memory of it. Read the state first:
 
 ```
-/var/lib/hermes/skills/sinal-shared/scripts/sinal.py status --json
+sinal status --json
 ```
 
 `"ready": false` with no mode means nobody has set this up yet. In the owner's

@@ -48,6 +48,13 @@ RUN set -eu; \
     [ "$got" = "$want" ] || { echo "agent-index client is $got, pin says $want" >&2; exit 1; }; \
     chmod 0644 /opt/plow/agent-index-client.py
 
+# The command the skills and the persona call. Installed by the image, on the
+# PATH in two standard places, running the image's own copy of the tool: the
+# runtime strips the executable bit off skill files on their way into the
+# agent's home, and a .py under that home is a file a turn could rewrite.
+COPY --chmod=0755 image/bin/sinal /usr/local/bin/sinal
+RUN ln -sf /usr/local/bin/sinal /usr/bin/sinal
+
 COPY image/s6-overlay/ /etc/s6-overlay/
 
 # The state directory: agent-owned, 0700, empty until setup runs. An unset-up
