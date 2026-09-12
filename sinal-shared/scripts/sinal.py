@@ -209,6 +209,12 @@ def cmd_resolve(args, state):
     return state, f"Closed by {record['resolved_by']} {minutes} minutes after the morning message."
 
 
+def cmd_language(args, state):
+    state["language"] = args.value
+    spoken = {"en": "English", "pt": "portugues"}[args.value]
+    return state, f"From now on the morning message goes out in {spoken}."
+
+
 def cmd_status(args, state):
     ready, reason = st.is_configured(state)
     tz = st.tzinfo_for(state)
@@ -327,6 +333,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("resolve", help="someone reached them; close today")
     p.add_argument("--by", required=True)
     p.set_defaults(func=cmd_resolve)
+
+    p = sub.add_parser("language", help="the language the morning message goes out in")
+    p.add_argument("--value", required=True, choices=["en", "pt"])
+    p.set_defaults(func=cmd_language)
 
     p = sub.add_parser("status")
     p.add_argument("--json", action="store_true")

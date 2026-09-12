@@ -294,3 +294,37 @@ def test_nothing_we_ship_trips_the_runtime_threat_scanner():
                 f"{relative} matches {name}: Hermes would drop the whole file and the agent "
                 "would answer with the base image's persona instead of ours"
             )
+
+
+def test_setting_it_up_after_the_hour_does_not_fake_a_morning():
+    """Configured at noon, with the hour set to 8:30: no message, no alarm."""
+    state = family_state()
+    state, actions = st.decide(state, at(12, 0))
+    assert actions == []
+    assert state["today"]["stage"] == "done"
+    assert state["today"]["skipped"]
+    state, later = st.decide(state, at(14, 0))
+    assert later == []
+
+
+def test_a_skipped_day_greets_normally_the_next_morning():
+    state = family_state()
+    state, _ = st.decide(state, at(12, 0))
+    state, actions = st.decide(state, at(8, 30, day=13))
+    assert [a["kind"] for a in actions] == ["greet"]
+
+
+def test_a_greeting_a_little_late_still_goes_out():
+    """A tick that fires 40 minutes late (a restart, a slow boot) is still today."""
+    state = family_state()
+    state, actions = st.decide(state, at(9, 10))
+    assert [a["kind"] for a in actions] == ["greet"]
+
+
+def test_a_skipped_day_is_not_counted_as_answered():
+    state = family_state()
+    state, _ = st.decide(state, at(12, 0))
+    state, _ = st.decide(state, at(8, 30, day=13))
+    state, _ = st.decide(state, at(8, 40, day=13), observed_reply_at=at(8, 39, day=13))
+    data = st.summary(state, days=7)
+    assert data["days"] == 1 and data["answered"] == 1

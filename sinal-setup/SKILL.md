@@ -51,7 +51,13 @@ printenv PLOW_HOME_CHANNEL                      # this chat's cht_ id
   --timezone "America/New_York" --morning-at "08:30" --language en
 ```
 
-Use `--language pt` when the family writes in Portuguese.
+`--language` is not optional and it is not a default. Look at what the owner
+has been typing to you in this chat and pass the language they are actually
+using: `--language pt` if they wrote to you in Portuguese, `--language en` if
+they wrote in English. The morning message goes out in that language every day,
+so getting it wrong means the watched person reads a greeting in a language they
+may not speak. If the owner later asks for the other language, the shared tool
+has `sinal.py language --value pt` and it takes effect the next morning.
 
 ## 3. Start the group
 
@@ -92,11 +98,13 @@ sinal.py oncall-add --name "Ana" --handle "+1555..." --chat-uid "cht_..."
 
 ```
 sinal.py setup-solo --name "Marcos" --chat "$PLOW_HOME_CHANNEL" \
-  --timezone "America/Chicago" --morning-at "09:00"
+  --timezone "America/Chicago" --morning-at "09:00" --language en
 ```
 
 Then ask for one emergency contact and start that thread exactly as in step 4.
-There is no group in this shape, and the owner is the one who answers.
+There is no group in this shape, and the owner is the one who answers. The same
+language rule from step 2 applies here, and it matters more, because in this
+shape the person reading the morning message is the owner himself.
 
 ## 6. The weekly line
 

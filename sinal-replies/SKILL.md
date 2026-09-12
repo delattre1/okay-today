@@ -31,6 +31,9 @@ add only what the words carry:
 - a different hour from now on: `sinal.py schedule --morning-at "09:00"`.
 - a different hour tomorrow only: `sinal.py schedule --tomorrow "11:00"`.
 - stop altogether: `sinal.py consent --value no` and confirm that it stopped.
+- writing to you in a language the morning message is not in, or asking for
+  another one: `sinal.py language --value pt` (or `en`), and say it from
+  tomorrow onwards.
 
 Then say `NO_REPLY` and nothing else, unless she asked you something. A one-word
 answer earns silence, not a thank-you.

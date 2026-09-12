@@ -281,18 +281,36 @@ def decide(state: dict, now: datetime, observed_reply_at: datetime = None) -> tu
 
     if record is None:
         due = _greet_due_at(state, local, tz, today)
-        if now >= due:
-            name = clean_name(state["watch"]["name"]) or "there"
-            actions.append({"kind": "greet", "chat_uid": state["watch"]["chat_uid"],
-                            "text": _t(state, "greet", name=name)})
+        if now < due:
+            return state, actions
+        # Late is not the same as due. Setting this up at noon with a 9am hour
+        # used to fire "good morning" on the spot, three hours after the hour it
+        # names -- and then walk an escalation over a morning that was never a
+        # morning. Past the grace window the day is closed without a message;
+        # the first real one goes out tomorrow, at the hour the owner chose.
+        windows = state.get("windows") or DEFAULT_STATE["windows"]
+        if (now - due) > timedelta(minutes=windows["nudge_after_min"]):
             state["today"] = {
                 "date": today,
-                "greeted_at": fmt_dt(now),
+                "greeted_at": None,
                 "replied_at": None,
-                "stage": "greeted",
+                "stage": "done",
+                "skipped": "set up after the hour",
                 "resolved_by": None,
                 "resolved_at": None,
             }
+            return state, actions
+        name = clean_name(state["watch"]["name"]) or "there"
+        actions.append({"kind": "greet", "chat_uid": state["watch"]["chat_uid"],
+                        "text": _t(state, "greet", name=name)})
+        state["today"] = {
+            "date": today,
+            "greeted_at": fmt_dt(now),
+            "replied_at": None,
+            "stage": "greeted",
+            "resolved_by": None,
+            "resolved_at": None,
+        }
         return state, actions
 
     if record.get("stage") == "done":
@@ -371,6 +389,7 @@ def _roll_day(state: dict) -> dict:
             "minutes_to_reply": record.get("minutes_to_reply"),
             "stage": record.get("stage"),
             "resolved_by": record.get("resolved_by"),
+            "skipped": record.get("skipped"),
         })
         del state["history"][:-HISTORY_CAP]
     state["today"] = None
@@ -386,6 +405,7 @@ def summary(state: dict, days: int = 7) -> dict:
     if state.get("today"):
         entries.append(state["today"])
     entries = entries[-days:]
+    entries = [e for e in entries if not e.get("skipped")]
     answered = [e for e in entries if e.get("replied_at")]
     minutes = sorted(e["minutes_to_reply"] for e in answered if e.get("minutes_to_reply") is not None)
     escalated = [e for e in entries if (e.get("stage") in ("oncall", "owner"))
