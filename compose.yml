@@ -4,7 +4,11 @@ services:
     environment:
       # The Agent Index project id this install reports to. Registered once by
       # the publisher; every installer reports to the same id.
-      AGENT_ID: ${AGENT_ID:-sinal-de-vida}
+      #
+      # Empty on purpose until the id is registered: the reporter stands down
+      # with no AGENT_ID, and an id that registers itself from a container is an
+      # id nobody chose. Set it here once `--register` has run.
+      AGENT_ID: ${AGENT_ID:-}
     volumes:
       # `.host`, not the path the agent reads: a bind carries this machine's
       # ownership in, and the image copies the file into place as root itself.
