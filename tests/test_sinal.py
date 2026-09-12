@@ -363,3 +363,14 @@ def test_no_skill_calls_the_tool_by_a_path_under_the_agents_home():
             f"{relative} calls the tool by its path under the agent's home; "
             "say `sinal` instead, which the image installs on the PATH"
         )
+
+
+def test_the_repository_is_mit_licensed():
+    """The Agent Index states it in writing: an agent ranks on the leaderboard
+    only if it is MIT licensed, verified, and reporting. The example agent
+    everyone copies is Apache-2.0, which is how this repo started out, so the
+    mismatch is easy to inherit and expensive to notice on the day of the
+    snapshot."""
+    text = open(os.path.join(ROOT, "LICENSE"), encoding="utf-8").read()
+    assert "MIT License" in text, "the leaderboard requires MIT; this LICENSE is not it"
+    assert "Apache" not in text.split("\n")[0], "LICENSE must not be the Apache text"

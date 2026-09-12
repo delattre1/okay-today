@@ -1,13 +1,14 @@
 Sinal de Vida, a daily check-in agent for people who live alone.
-Copyright 2026 Bruno Arantes.
+Copyright (c) 2026 Bruno Arantes.
 
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use
-this file except in compliance with the License. You may obtain a copy of the
-License at http://www.apache.org/licenses/LICENSE-2.0
+This project is released under the MIT License; see LICENSE.
 
-Built on the Plow cloud agent base image (plow-pbc/plow-hermes-agent) and the
-Plow Chat plugin, Copyright 2026 The Plow Collective, Inc. "Plow" and the Plow
-logo are trademarks of The Plow Collective, Inc.; this project's use of the base
-image grants no trademark rights. The structure of the image, the s6 services
-and the agent-index client pin follow plow-pbc/life-assistant-hermes-agent,
-Apache-2.0.
+It is built on the Plow cloud agent base image (plow-pbc/plow-hermes-agent) and
+the Plow Chat plugin, Copyright 2026 The Plow Collective, Inc., distributed by
+their authors under the Apache License 2.0. Those components keep their own
+license and notices; nothing here relicenses them. "Plow" and the Plow logo are
+trademarks of The Plow Collective, Inc., and use of the base image grants no
+trademark rights.
+
+The shape of the image, the s6 service layout and the pinned agent-index client
+follow plow-pbc/life-assistant-hermes-agent, Apache-2.0.
