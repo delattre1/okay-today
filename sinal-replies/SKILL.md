@@ -12,8 +12,9 @@ conversation has no memory of it**. Before anything else:
 sinal status --json
 ```
 
-That tells you the shape, the hour, today's record and who is on call. Answer
-from it, never from what the thread appears to say.
+That tells you the shape, the hour, the language the morning message goes out in,
+today's record and who is on call. Answer from it, never from what the thread
+appears to say, and never report a change you did not watch the tool make.
 
 ## The person being checked on
 

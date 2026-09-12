@@ -223,6 +223,7 @@ def cmd_status(args, state):
         "ready": ready,
         "reason": reason,
         "mode": state.get("mode"),
+        "language": state.get("language"),
         "watch": {k: state["watch"].get(k) for k in
                   ("name", "morning_at", "timezone", "consent", "chat_uid")},
         "oncall": [{"name": c.get("name"), "consent": c.get("consent")}
@@ -235,6 +236,7 @@ def cmd_status(args, state):
         return state, json.dumps(payload, ensure_ascii=False)
     lines = [f"{'Ready' if ready else 'Not ready'}: {reason}",
              f"Mode: {state.get('mode') or 'not set'}",
+             f"Morning message language: {state.get('language')}",
              f"Checking on {state['watch'].get('name') or '(nobody yet)'} at "
              f"{state['watch'].get('morning_at')} {state['watch'].get('timezone')} "
              f"(consent: {state['watch'].get('consent')})"]
