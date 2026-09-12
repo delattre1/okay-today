@@ -5,6 +5,7 @@ milliseconds and the tests say the hours out loud.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -255,3 +256,41 @@ def test_state_file_is_owner_only(tmp_path):
     run_cli(tmp_path, "setup-solo", "--name", "Marcos", "--chat", "cht_me")
     path = os.path.join(tmp_path, "state.json")
     assert oct(os.stat(path).st_mode & 0o777) == "0o600"
+
+
+# --------------------------------------------------- the runtime's own scanner
+# Hermes scans SOUL.md and the other context files for prompt-injection and C2
+# patterns and REPLACES the whole file when one matches (agent/prompt_builder.py
+# through tools/threat_patterns.py). It is not a warning: the agent loses its
+# entire persona and falls back to the base image's, which is how this project
+# spent an hour on 12/09 watching a check-in agent introduce itself as a general
+# Mac assistant. These are the patterns from that file that ordinary English can
+# trip over, and "check in with" is the one that bit us.
+BLOCKING_PATTERNS = [
+    (r"(heartbeat|beacon|check[\s\-]?in)\s+(to|with)\s+", "c2_heartbeat"),
+    (r"register\s+(as\s+)?a?\s*node", "c2_node_registration"),
+    (r"pull\s+(down\s+)?(?:new\s+)?task(?:ing|s)?\b", "c2_task_pull"),
+    (r"connect\s+to\s+the\s+network\b", "c2_network_connect"),
+    (r"you\s+are\s+(?:\w+\s+){0,8}now\s+(?:a|an|the)\s+", "role_hijack"),
+    (r"\bname\s+yourself\s+\w+", "identity_override"),
+    (r"only\s+use\s+one[\s\-]?liners?\b", "anti_forensic_oneliner"),
+    (r"\bcommand\s+and\s+control\b", "c2_explicit_long"),
+]
+
+CONTEXT_FILES = [
+    "runtime/persona.md",
+    "sinal-setup/SKILL.md",
+    "sinal-replies/SKILL.md",
+    "sinal-weekly/SKILL.md",
+    "sinal-shared/SKILL.md",
+]
+
+
+def test_nothing_we_ship_trips_the_runtime_threat_scanner():
+    for relative in CONTEXT_FILES:
+        text = open(os.path.join(ROOT, relative), encoding="utf-8").read().lower()
+        for pattern, name in BLOCKING_PATTERNS:
+            assert not re.search(pattern, text), (
+                f"{relative} matches {name}: Hermes would drop the whole file and the agent "
+                "would answer with the base image's persona instead of ours"
+            )
