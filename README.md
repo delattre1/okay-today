@@ -1,4 +1,4 @@
-# Sinal de Vida
+# Okay Today
 
 A daily check-in you can text. It says good morning to one person who lives
 alone, and it stays quiet when they answer. When a morning goes unanswered, it

@@ -1,4 +1,4 @@
-# Sinal de Vida, for whoever picks this up next
+# Okay Today, for whoever picks this up next
 
 A daily check-in agent for the AI Worth Using x Hermes hackathon (submission
 16/09/2026, leaderboard snapshot 22/09). Built on the Plow cloud agent base
