@@ -328,3 +328,17 @@ def test_a_skipped_day_is_not_counted_as_answered():
     state, _ = st.decide(state, at(8, 40, day=13), observed_reply_at=at(8, 39, day=13))
     data = st.summary(state, days=7)
     assert data["days"] == 1 and data["answered"] == 1
+
+
+def test_the_tool_every_skill_calls_by_path_is_executable():
+    """Each skill runs `sinal.py ...` as a command, on a path, with no
+    interpreter in front of it. Lose the executable bit and every documented
+    command in the product answers Permission denied on a stranger's install,
+    while the watchman keeps ticking and nothing looks broken from outside."""
+    with open(CLI, encoding="utf-8") as handle:
+        first = handle.readline()
+    assert first.startswith("#!"), "sinal.py is called as a command and needs a shebang"
+    assert os.access(CLI, os.X_OK), (
+        "sinal.py is not executable: setup, replies and the weekly line all "
+        "call it by path and would fail before reading the state"
+    )
