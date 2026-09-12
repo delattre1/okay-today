@@ -215,6 +215,15 @@ def cmd_language(args, state):
     return state, f"From now on the morning message goes out in {spoken}."
 
 
+def cmd_rehearse(args, state):
+    if args.stop:
+        if not st.rehearsing(state):
+            return state, "No rehearsal is running."
+        state = st.end_rehearsal(state)
+        return state, "Rehearsal off. The real hour and the real windows are back."
+    return st.start_rehearsal(state, st.utcnow())
+
+
 def cmd_status(args, state):
     ready, reason = st.is_configured(state)
     tz = st.tzinfo_for(state)
@@ -224,6 +233,7 @@ def cmd_status(args, state):
         "reason": reason,
         "mode": state.get("mode"),
         "language": state.get("language"),
+        "rehearsing": st.rehearsing(state),
         "watch": {k: state["watch"].get(k) for k in
                   ("name", "morning_at", "timezone", "consent", "chat_uid")},
         "oncall": [{"name": c.get("name"), "consent": c.get("consent")}
@@ -339,6 +349,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("language", help="the language the morning message goes out in")
     p.add_argument("--value", required=True, choices=["en", "pt"])
     p.set_defaults(func=cmd_language)
+
+    p = sub.add_parser("rehearse", help="run a whole day in three minutes, in the owner's chat")
+    p.add_argument("--stop", action="store_true")
+    p.set_defaults(func=cmd_rehearse)
 
     p = sub.add_parser("status")
     p.add_argument("--json", action="store_true")

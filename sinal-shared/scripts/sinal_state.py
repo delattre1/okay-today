@@ -53,6 +53,7 @@ DEFAULT_STATE = {
     "pause_until": None,           # UTC ISO 8601, or null
     "pause_reason": None,
     "override": None,              # one-off: {"date": "YYYY-MM-DD", "morning_at": "HH:MM"}
+    "rehearsal": None,            # a whole day compressed, in the owner's chat only
     "today": None,
     "history": [],                 # newest last, capped
 }
@@ -210,6 +211,10 @@ TEXTS = {
         "solo_oncall": ("{owner} set me to check in every morning and asked me to tell you "
                         "if there was no answer. There's been none since {greeted}. "
                         "Could you try reaching them?"),
+        "rehearsal_to": "Rehearsal. This is what {who} would get:",
+        "rehearsal_done": ("That was a whole day, in three minutes. The real one runs at "
+                           "{hour}, and you hear from me again only if a morning goes "
+                           "unanswered."),
     },
     "pt": {
         "greet": "Bom dia, {name}. Tudo bem por aí?",
@@ -223,6 +228,10 @@ TEXTS = {
         "solo_oncall": ("{owner} pediu para eu mandar um bom-dia todo dia e avisar você se não "
                         "houvesse resposta. Não tem resposta desde {greeted}. "
                         "Você consegue falar com {owner}?"),
+        "rehearsal_to": "Ensaio. É isso que {who} receberia:",
+        "rehearsal_done": ("Esse foi um dia inteiro, em três minutos. O de verdade acontece "
+                           "às {hour}, e você só ouve falar de mim de novo se uma manhã "
+                           "ficar sem resposta."),
     },
 }
 
@@ -271,6 +280,20 @@ def decide(state: dict, now: datetime, observed_reply_at: datetime = None) -> tu
     if not ready:
         return state, actions
 
+    # A rehearsal is a whole day compressed into three minutes. It borrows the
+    # real settings, so it has to give them back: when it finishes, when it is
+    # stopped, and when it is simply abandoned with the terminal closed.
+    plan = state.get("rehearsal")
+    if plan:
+        expires = parse_dt(plan.get("expires_at"))
+        if expires and now >= expires:
+            state = end_rehearsal(state)
+            plan = None
+    if plan:
+        # A real answer does not cut a rehearsal short. The escalation is the
+        # part nobody believes until they watch it, so it plays to the end.
+        observed_reply_at = None
+
     record = state.get("today")
     if record and record.get("date") != today:
         state = _roll_day(state)
@@ -289,7 +312,7 @@ def decide(state: dict, now: datetime, observed_reply_at: datetime = None) -> tu
         # morning. Past the grace window the day is closed without a message;
         # the first real one goes out tomorrow, at the hour the owner chose.
         windows = state.get("windows") or DEFAULT_STATE["windows"]
-        if (now - due) > timedelta(minutes=windows["nudge_after_min"]):
+        if not plan and (now - due) > timedelta(minutes=windows["nudge_after_min"]):
             state["today"] = {
                 "date": today,
                 "greeted_at": None,
@@ -311,7 +334,7 @@ def decide(state: dict, now: datetime, observed_reply_at: datetime = None) -> tu
             "resolved_by": None,
             "resolved_at": None,
         }
-        return state, actions
+        return state, _rehearsal_view(state, actions) if plan else actions
 
     if record.get("stage") == "done":
         return state, actions
@@ -370,7 +393,100 @@ def decide(state: dict, now: datetime, observed_reply_at: datetime = None) -> tu
 
     record["stage"] = stage
     state["today"] = record
+
+    if plan:
+        actions = _rehearsal_view(state, actions)
+        done = stage == "owner" or (stage == "oncall" and state.get("mode") == "solo")
+        if done:
+            actions.append({"kind": "rehearsal_done", "chat_uid": _rehearsal_chat(state),
+                            "text": _t(state, "rehearsal_done",
+                                       hour=state["watch"].get("morning_at"))})
+            state = end_rehearsal(state)
     return state, actions
+
+
+REHEARSAL_WINDOWS = {"nudge_after_min": 1, "oncall_after_min": 2, "owner_after_min": 3}
+REHEARSAL_EXPIRES_MIN = 20
+
+
+def rehearsing(state: dict) -> bool:
+    return bool(state.get("rehearsal"))
+
+
+def start_rehearsal(state: dict, now: datetime) -> tuple:
+    """A whole day in three minutes, in the owner's own chat.
+
+    This exists because the loop this product sells is 24 hours long and the
+    decision to keep it is made in five minutes, right after install, by
+    someone looking at a screen where nothing is happening. A person who has
+    watched the escalation once believes the alarm; a person who has only read
+    about it closes the terminal.
+
+    Every message is redirected to the owner and labelled with who it was for,
+    so a demonstration never makes a third person's phone ring. The real hour
+    and the real windows are put back when it ends, and again if it is simply
+    abandoned.
+    """
+    ready, reason = is_configured(state)
+    if not ready:
+        return state, f"Not set up yet: {reason}"
+    if rehearsing(state):
+        return state, "A rehearsal is already running."
+    if state.get("pause_until"):
+        return state, "The mornings are paused. Resume them first."
+    tz = tzinfo_for(state)
+    local = now.astimezone(tz)
+    state["rehearsal"] = {
+        "started_at": fmt_dt(now),
+        "expires_at": fmt_dt(now + timedelta(minutes=REHEARSAL_EXPIRES_MIN)),
+        "restore": {
+            "windows": state.get("windows"),
+            "today": state.get("today"),
+            "override": state.get("override"),
+        },
+    }
+    state["windows"] = dict(REHEARSAL_WINDOWS)
+    state["today"] = None
+    state["override"] = {"date": local.date().isoformat(), "morning_at": local.strftime("%H:%M")}
+    return state, ("Rehearsal on. The morning message goes out within a minute, then one "
+                   "step a minute, all of it in this chat.")
+
+
+def end_rehearsal(state: dict) -> dict:
+    """Give back exactly what the rehearsal borrowed."""
+    plan = state.get("rehearsal") or {}
+    restore = plan.get("restore") or {}
+    state["windows"] = restore.get("windows") or dict(DEFAULT_STATE["windows"])
+    state["today"] = restore.get("today")
+    state["override"] = restore.get("override")
+    state["rehearsal"] = None
+    return state
+
+
+def _rehearsal_chat(state: dict) -> str:
+    owner_chat = (state.get("owner") or {}).get("chat_uid") or ""
+    return owner_chat if valid_chat(owner_chat) else state["watch"]["chat_uid"]
+
+
+def _recipient_name(state: dict, action: dict) -> str:
+    kind = action.get("kind")
+    if kind in ("greet", "nudge"):
+        return clean_name(state["watch"].get("name")) or "them"
+    if kind == "owner":
+        return clean_name((state.get("owner") or {}).get("name")) or "you"
+    for contact in state.get("oncall") or []:
+        if contact.get("chat_uid") == action.get("chat_uid"):
+            return clean_name(contact.get("name")) or "your contact"
+    return "your contact"
+
+
+def _rehearsal_view(state: dict, actions: list) -> list:
+    """One chat, every message, each one saying whose phone it would be on."""
+    here = _rehearsal_chat(state)
+    return [{"kind": action["kind"], "chat_uid": here,
+             "text": _t(state, "rehearsal_to", who=_recipient_name(state, action))
+                     + "\n\n" + action["text"]}
+            for action in actions]
 
 
 def _greet_due_at(state: dict, local: datetime, tz, today: str) -> datetime:

@@ -374,3 +374,80 @@ def test_the_repository_is_mit_licensed():
     text = open(os.path.join(ROOT, "LICENSE"), encoding="utf-8").read()
     assert "MIT License" in text, "the leaderboard requires MIT; this LICENSE is not it"
     assert "Apache" not in text.split("\n")[0], "LICENSE must not be the Apache text"
+
+
+def rehearsal_clock(minutes):
+    """Wall clock during a rehearsal: noon plus a few minutes, as UTC."""
+    return datetime(2026, 9, 12, 16, 0, tzinfo=timezone.utc) + timedelta(minutes=minutes)
+
+
+def test_a_rehearsal_greets_at_once_instead_of_waiting_for_tomorrow():
+    state = family_state()
+    state, note = st.start_rehearsal(state, rehearsal_clock(0))
+    assert "Rehearsal on" in note
+    state, actions = st.decide(state, rehearsal_clock(0.5))
+    assert [a["kind"] for a in actions] == ["greet"]
+    assert "Good morning, Celia" in actions[0]["text"]
+
+
+def test_every_rehearsal_message_lands_in_the_owners_chat_and_says_whose_it_is():
+    """Nobody else's phone rings for a demonstration."""
+    state = family_state(oncall=oncall())
+    state, _ = st.start_rehearsal(state, rehearsal_clock(0))
+    sent = []
+    for minute in (0.5, 1.5, 2.5, 3.5):
+        state, actions = st.decide(state, rehearsal_clock(minute))
+        sent.extend(actions)
+    assert sent, "a rehearsal that sends nothing shows nothing"
+    assert {a["chat_uid"] for a in sent} == {"cht_owner"}
+    for action in sent:
+        if action["kind"] != "rehearsal_done":
+            assert action["text"].startswith("Rehearsal.")
+    kinds = [a["kind"] for a in sent]
+    assert kinds == ["greet", "nudge", "oncall", "owner", "rehearsal_done"], kinds
+    assert "Ana" in [a["text"] for a in sent if a["kind"] == "oncall"][0]
+
+
+def test_a_rehearsal_gives_back_the_real_hour_and_the_real_windows():
+    state = family_state()
+    state["today"] = {"date": "2026-09-12", "greeted_at": "2026-09-12T12:30:00Z",
+                      "replied_at": "2026-09-12T12:31:00Z", "stage": "done",
+                      "resolved_by": None, "resolved_at": None, "minutes_to_reply": 1}
+    real_windows = dict(state["windows"])
+    real_today = dict(state["today"])
+    state, _ = st.start_rehearsal(state, rehearsal_clock(0))
+    assert state["windows"]["nudge_after_min"] == 1
+    for minute in (0.5, 1.5, 2.5, 3.5):
+        state, _ = st.decide(state, rehearsal_clock(minute))
+    assert not st.rehearsing(state)
+    assert state["windows"] == real_windows
+    assert state["today"] == real_today
+    assert state["override"] is None
+
+
+def test_an_abandoned_rehearsal_expires_on_its_own():
+    """Terminal closed halfway through, and the windows must not stay at one
+    minute: the next real morning would alarm the family in three."""
+    state = family_state()
+    state, _ = st.start_rehearsal(state, rehearsal_clock(0))
+    state, _ = st.decide(state, rehearsal_clock(0.5))
+    state, actions = st.decide(state, rehearsal_clock(st.REHEARSAL_EXPIRES_MIN + 1))
+    assert not st.rehearsing(state)
+    assert state["windows"]["nudge_after_min"] == 120
+
+
+def test_a_reply_does_not_cut_a_rehearsal_short():
+    """The escalation is the part nobody believes until they watch it."""
+    state = solo_state(oncall=oncall())
+    state, _ = st.start_rehearsal(state, rehearsal_clock(0))
+    state, _ = st.decide(state, rehearsal_clock(0.5))
+    state, actions = st.decide(state, rehearsal_clock(1.5),
+                               observed_reply_at=rehearsal_clock(1.2))
+    assert [a["kind"] for a in actions] == ["nudge"]
+
+
+def test_a_rehearsal_needs_a_finished_setup():
+    state = json.loads(json.dumps(st.DEFAULT_STATE))
+    state, note = st.start_rehearsal(state, rehearsal_clock(0))
+    assert "Not set up yet" in note
+    assert not st.rehearsing(state)

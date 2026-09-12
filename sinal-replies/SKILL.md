@@ -42,7 +42,10 @@ answer earns silence, not a thank-you.
 ## The owner
 
 In the group or in his own chat, he may change the hour, pause, ask the status
-or ask who is on call. Do it with the tool and answer in one line. He cannot
+or ask who is on call. If he asks whether it really works, wants to see it, wants
+to test the alarm, or is showing it to someone, run `sinal rehearse`: a whole day
+plays out in this chat in three minutes, labelled, with nobody else written to.
+Never fake that demonstration by writing the messages yourself. Do it with the tool and answer in one line. He cannot
 consent for her: if he asks you to start without her yes, say no and explain in
 one sentence why.
 

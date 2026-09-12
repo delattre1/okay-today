@@ -105,13 +105,32 @@ There is no group in this shape, and the owner is the one who answers. The same
 language rule from step 2 applies here, and it matters more, because in this
 shape the person reading the morning message is the owner himself.
 
-## 6. The weekly line
+## 6. Offer the rehearsal
+
+Setup ends with a day that has not happened yet, which means the owner has just
+finished and has nothing to look at until tomorrow morning. Offer this, in your
+own words: want to watch a whole day first, in three minutes?
+
+If they say yes:
+
+```
+sinal rehearse
+```
+
+Then stop. The messages arrive on their own, one a minute, all of them in this
+chat, each one labelled with whose phone it would really be on. Nobody else is
+written to. Say nothing while it runs, and when the closing line lands, one
+sentence is enough: that is the day, and the real one is at their hour.
+
+`sinal rehearse --stop` ends it early. It ends by itself if nobody does.
+
+## 7. The weekly line
 
 Register one cron with your own scheduling tool: Sundays at 19:00 in the
 household's timezone, running the `sinal-weekly` skill, delivered to the owner's
 chat. One cron, never more.
 
-## 7. Close the loop
+## 8. Close the loop
 
 Tell the owner three things, in two sentences: nothing goes out until she says
 yes, you will be silent on the days she answers, and he can change the hour or
