@@ -1,0 +1,32 @@
+#!/bin/sh
+# The check-in itself: one tick a minute, no model, for as long as the agent is up.
+#
+# A supervised loop rather than a cron, because the escalation has minute-level
+# steps and a missed tick must cost nothing. The loop lives inside watchman.py;
+# s6 restarts it if it ever exits.
+set -eu
+
+# Explicit, and absolute paths below it. A service inherits the supervision
+# tree's PATH, not a login shell's.
+PATH=/command:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH
+
+# The tenant's own endpoint and bearer, written by first boot from the
+# credential the host dropped in, read here as root before dropping to the
+# agent's uid. Two explicit reads rather than the whole directory: the watchman
+# sends chat messages and reads chat messages, and nothing else.
+PLOW_API_BASE=$(cat /run/s6/container_environment/PLOW_API_BASE 2>/dev/null || true)
+PLOW_AGENT_TOKEN=$(cat /run/s6/container_environment/PLOW_AGENT_TOKEN 2>/dev/null || true)
+export PLOW_API_BASE PLOW_AGENT_TOKEN
+
+if [ -z "$PLOW_API_BASE" ] || [ -z "$PLOW_AGENT_TOKEN" ]; then
+  echo "sinal-watchman: no Plow credential in this container's environment; standing down" >&2
+  exec sleep 86400
+fi
+
+# /opt/plow, never $HERMES_HOME/skills: only this copy is root-owned. The home
+# copy belongs to the agent's uid, so running it here would execute whatever a
+# turn last wrote, unattended, with this household's credential.
+exec /command/s6-setuidgid hermes \
+  env HOME=/var/lib/hermes HERMES_HOME=/var/lib/hermes SINAL_DIR=/var/lib/hermes/sinal \
+  /opt/hermes/.venv/bin/python3 /opt/plow/sinal/watchman.py

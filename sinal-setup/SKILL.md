@@ -1,0 +1,104 @@
+---
+name: sinal-setup
+description: Set up the daily check-in, in the owner's own chat. Collects who is checked on, the hour and the timezone, starts the group with the owner and that person, asks the two consents (the person being checked on, and whoever is on call), and records everything in the state file. Use when the owner installs the agent, asks to start or change the check-in, or asks who is being checked on.
+---
+
+# Setting up the check-in
+
+Runs **only in the owner's own one-to-one chat**. In a group, say that setup is
+something the owner starts privately, and stop there: this run records phone
+numbers and starts threads with other people.
+
+The tool for every write is
+`/var/lib/hermes/skills/sinal-shared/scripts/sinal.py`. Never edit the state
+file by hand.
+
+## 1. Which shape
+
+Ask one question: is there someone who lives alone that you want me to check on,
+or is it you who lives alone?
+
+## 2. Family shape
+
+Collect, one or two at a time, never as a form:
+
+- their first name, and what the owner calls them;
+- their phone number, in +1 form (ask again if it is not a full number);
+- the city or timezone they are in;
+- the hour the message should go out, in their time, default 8:30;
+- who should hear from you when a morning goes unanswered: name and phone,
+  usually a sibling. The owner may name themselves.
+
+Then say, in your own words: before I write to her, tell her I exist. One line
+from you is worth more than anything I can say first.
+
+Wait for the owner to say they told her. Then:
+
+```
+printenv PLOW_HOME_CHANNEL                      # this chat's cht_ id
+/var/lib/hermes/skills/sinal-shared/scripts/sinal.py setup-family \
+  --name "Celia" --handle "+15551234567" \
+  --owner-name "Junior" --owner-chat "cht_..." \
+  --timezone "America/New_York" --morning-at "08:30" --language en
+```
+
+Use `--language pt` when the family writes in Portuguese.
+
+## 3. Start the group
+
+Call `plow_start_group_message` with **both** handles, the owner's and hers, so
+the group is {owner, her, you}. Show the owner the exact text first and send
+only after they approve, with `dry_run=false`, `confirm=true` and
+**`trusted=false`**. Discretion is not optional here: a full-trust room would
+let anyone in it reach the owner's connected accounts and recall from his other
+chats.
+
+The first message is the consent ask, in her language, and it is the only thing
+in it:
+
+> Hi Celia, I'm Junior's assistant. He asked me to say good morning to you every
+> day at 8:30 and to let the family know only if you don't answer. Is that okay
+> with you? Just reply YES.
+
+Read the result. Record the chat id, and tell the owner plainly if `adoption` is
+anything other than `adopted`, because then her replies will not reach you:
+
+```
+sinal.py link-chat --watch-chat "cht_..."
+```
+
+## 4. The on-call person
+
+Start a separate one-to-one thread with them, same rules, and record it:
+
+> Hi Ana, I'm the assistant Junior set up for your mother. He put you down as
+> the person to call if she doesn't answer the morning message. You'll only hear
+> from me if that happens. Okay with you? Just reply YES.
+
+```
+sinal.py oncall-add --name "Ana" --handle "+1555..." --chat-uid "cht_..."
+```
+
+## 5. Solo shape
+
+```
+sinal.py setup-solo --name "Marcos" --chat "$PLOW_HOME_CHANNEL" \
+  --timezone "America/Chicago" --morning-at "09:00"
+```
+
+Then ask for one emergency contact and start that thread exactly as in step 4.
+There is no group in this shape, and the owner is the one who answers.
+
+## 6. The weekly line
+
+Register one cron with your own scheduling tool: Sundays at 19:00 in the
+household's timezone, running the `sinal-weekly` skill, delivered to the owner's
+chat. One cron, never more.
+
+## 7. Close the loop
+
+Tell the owner three things, in two sentences: nothing goes out until she says
+yes, you will be silent on the days she answers, and he can change the hour or
+pause any time by telling you. Then run
+`sinal.py status` and read back the hour and the timezone so a wrong city gets
+caught now rather than at 5 in the morning.
